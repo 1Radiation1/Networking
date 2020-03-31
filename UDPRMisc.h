@@ -1,5 +1,11 @@
 #pragma once
 
+/// STD
+#include <atomic>
+
+/// WINDOWS
+#include <WinSock2.h>
+
 namespace UDPR
 {
 	static bool RetryRecv(int errCode)
