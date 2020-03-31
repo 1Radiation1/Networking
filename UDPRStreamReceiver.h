@@ -13,7 +13,7 @@
 #include <WinSock2.h>
 
 /// CUSTOM
-#include "DebugHeaders.h"
+#include "UDPRDebugHeaders.h"
 #include "UDPRMisc.h"
 #include "UDPRStreamSender.h"
 
@@ -143,11 +143,11 @@ namespace UDPR
 			}
 			while (!bShouldStop && !DataAvailable(peer, timeout, this) && !bExInit);
 
-			if (!bExInit)
+			if (!bExInit && !bShouldStop)
 			{
 				if (!ReceiveHandshake())
 				{
-					if (!bExInit)
+					if (!bExInit && !bShouldStop)
 					{
 						goto RETRY_SENDHANDSHAKE;
 					}
