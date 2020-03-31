@@ -14,7 +14,7 @@
 #include <WinSock2.h>
 
 /// CUSTOM
-#include "DebugHeaders.h"
+#include "UDPRDebugHeaders.h"
 #include "UDPRMisc.h"
 
 namespace UDPR
