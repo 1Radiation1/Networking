@@ -1,4 +1,4 @@
 # Networking
 
 
-This is a networking API, based on UDP.
+This is a networking collection of classes, using UDP as the protocol of communication.
