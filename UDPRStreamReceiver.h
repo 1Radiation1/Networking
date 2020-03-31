@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstring>
 #include <string>
+#include <ctime>
 
 /// WINDOWS
 #include <WinSock2.h>
@@ -30,6 +31,7 @@ namespace UDPR
 			timeout(_timeout),
 			packetID(0ULL),
 			pos(0ULL),
+			respTime {  },
 			stream(_stream),
 			bShouldStop(false),
 			bFinished(false),
@@ -324,6 +326,8 @@ namespace UDPR
 		uint64_t packetID;
 		uint64_t pos;
 
+		std::atomic<time_t> respTime;
+
 	private:
 		// The stream, where received data will be written.
 		std::unique_ptr<TStream> stream;
@@ -359,5 +363,17 @@ namespace UDPR
 		FORCEINLINE const SOCKADDR_IN GetPeerAddress() const { return peerAddr; }
 		
 		FORCEINLINE bool IsRunning() const { return !bFinished; }
+
+		FORCEINLINE double LastCueTime() const
+		{
+			time_t then = respTime;
+			time_t now = time(nullptr);
+			if (then == 0)
+			{
+				return -1.0;
+			}
+
+			return difftime(now, then);
+		}
 	};
 }
