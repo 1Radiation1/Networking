@@ -103,6 +103,8 @@ namespace UDPR
 			}
 		}
 
+		owner->respTime = time(nullptr);
+
 		if (packetLen != nullptr)
 		{
 			(*packetLen) = res;
