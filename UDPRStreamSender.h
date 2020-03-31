@@ -9,6 +9,7 @@
 #include <vector>
 #include <cstring>
 #include <string>
+#include <ctime>
 
 /// WINDOWS
 #include <WinSock2.h>
@@ -39,6 +40,7 @@ namespace UDPR
 			packetSz(_packetSz),
 			port(_port),
 			timeout(_timeout),
+			respTime {  },
 			stream(_stream),
 			bShouldStop(false),
 			bAcknowledged(false),
@@ -257,10 +259,13 @@ namespace UDPR
 				int offset = 0;
 				std::memcpy(reinterpret_cast<void*>(&msgType), reinterpret_cast<const void*>(reqData + offset), sizeof(uint8_t));
 				offset += sizeof(uint8_t);
+
 				std::memcpy(reinterpret_cast<void*>(&packetID), reinterpret_cast<const void*>(reqData + offset), sizeof(uint64_t));
 				offset += sizeof(uint64_t);
+				
 				std::memcpy(reinterpret_cast<void*>(&pos), reinterpret_cast<const void*>(reqData + offset), sizeof(uint64_t));
 				offset += sizeof(uint64_t);
+				
 				std::memcpy(reinterpret_cast<void*>(&packetLen), reinterpret_cast<const void*>(reqData + offset), sizeof(uint16_t));
 				offset += sizeof(uint16_t);
 			}
@@ -324,6 +329,8 @@ namespace UDPR
 		const uint16_t port;
 		const timeval timeout;
 
+		std::atomic<time_t> respTime;
+
 	private:
 		// The stream that will be sent.
 		std::unique_ptr<TStream> stream;
@@ -372,5 +379,17 @@ namespace UDPR
 		FORCEINLINE uint16_t GetPacketSize() const { return packetSz; }
 
 		FORCEINLINE timeval GetTimeout() const { return timeout; }
+
+		FORCEINLINE double LastCueTime() const
+		{
+			time_t then = respTime;
+			time_t now = time(nullptr);
+			if (then == 0)
+			{
+				return -1.0;
+			}
+
+			return difftime(now, then);
+		}
 	};
 }
