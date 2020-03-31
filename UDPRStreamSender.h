@@ -374,4 +374,3 @@ namespace UDPR
 		FORCEINLINE timeval GetTimeout() const { return timeout; }
 	};
 }
-
