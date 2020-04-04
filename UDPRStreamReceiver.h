@@ -24,13 +24,13 @@ namespace UDPR
 	class StreamReceiver
 	{
 	public:
-		StreamReceiver(TStream* _stream, const SOCKADDR_IN& _peerAddr, const timeval& _timeout = { 0, 500 * 1000 }) :
+		StreamReceiver(TStream* _stream, const SOCKADDR_IN& _peerAddr, uint64_t _pos = 0ULL, const timeval& _timeout = { 0, 500 * 1000 }) :
 			peer(INVALID_SOCKET),
 			peerAddr { _peerAddr },
 			packet {  },
 			timeout(_timeout),
 			packetID(0ULL),
-			pos(0ULL),
+			pos(_pos),
 			respTime {  },
 			stream(_stream),
 			bShouldStop(false),
