@@ -9,9 +9,11 @@
 #include <vector>
 #include <cstring>
 #include <string>
+#include <ctime>
 
 /// WINDOWS
 #include <WinSock2.h>
+#include <WS2tcpip.h>
 
 /// CUSTOM
 #include "UDPRDebugHeaders.h"
@@ -32,13 +34,14 @@ namespace UDPR
 		static const uint8_t INM_request   = 1;
 
 	public:
-		StreamSender(TStream* _stream, uint16_t _port, uint16_t _packetSz = 508, const timeval& _timeout = { 0, 500 * 1000 }) :
+		StreamSender(TStream* _stream, SOCKADDR_IN _peerAddr, uint16_t _packetSz = 508, const timeval& _timeout = { 0, 500 * 1000 }) :
 			packet(_packetSz),
 			peer(INVALID_SOCKET),
-			peerAddr {  },
+			peerAddr(_peerAddr),
 			packetSz(_packetSz),
-			port(_port),
+			port(ntohs(peerAddr.sin_port)),
 			timeout(_timeout),
+			respTime {  },
 			stream(_stream),
 			bShouldStop(false),
 			bAcknowledged(false),
@@ -148,14 +151,7 @@ namespace UDPR
 			}
 
 			// Binding the socket.
-			SOCKADDR_IN anyAddr;
-			ZeroMemory(&anyAddr, sizeof(anyAddr));
-
-			anyAddr.sin_family			 = AF_INET;
-			anyAddr.sin_port			 = htons(port);
-			anyAddr.sin_addr.S_un.S_addr = htonl(ADDR_ANY);
-
-			if (bind(peer, reinterpret_cast<const sockaddr*>(&anyAddr), sizeof(anyAddr)) == SOCKET_ERROR)
+			if (bind(peer, reinterpret_cast<const sockaddr*>(&peerAddr), sizeof(peerAddr)) == SOCKET_ERROR)
 			{
 				return InitEx("Failed the bind.", WSAGetLastError());
 			}
@@ -170,13 +166,32 @@ namespace UDPR
 
 		void ReceiveHandshake()
 		{
-			ZeroMemory(&peerAddr, sizeof(peerAddr));
-			int peerAddrSz = sizeof(peerAddr);
+			SOCKADDR_IN rndAddr;
+			int rndAddrSz;
+			
+			
+		RETRY:
+			if (bShouldStop) { return; }
+
+			ZeroMemory(&rndAddr, sizeof(rndAddr));
+			rndAddrSz = sizeof(rndAddr);
 			uint8_t msgType;
 			if (ReceiveData(peer, timeout, this, bShouldStop, bExInit,
 							reinterpret_cast<char*>(&msgType), sizeof(uint8_t),
-							NULL, reinterpret_cast<sockaddr*>(&peerAddr), &peerAddrSz))
+							NULL, reinterpret_cast<sockaddr*>(&rndAddr), &rndAddrSz))
 			{
+				if (peerAddr.sin_addr.S_un.S_addr != htonl(ADDR_ANY))
+				{
+					if (rndAddr.sin_addr.S_un.S_addr != peerAddr.sin_addr.S_un.S_addr)
+					{
+						goto RETRY;
+					}
+				}
+				else
+				{
+					peerAddr = rndAddr;
+				}
+
 				if (msgType != INM_handshake)
 				{
 					return InitEx("Corrupt handshake message.", -1);
@@ -257,10 +272,13 @@ namespace UDPR
 				int offset = 0;
 				std::memcpy(reinterpret_cast<void*>(&msgType), reinterpret_cast<const void*>(reqData + offset), sizeof(uint8_t));
 				offset += sizeof(uint8_t);
+
 				std::memcpy(reinterpret_cast<void*>(&packetID), reinterpret_cast<const void*>(reqData + offset), sizeof(uint64_t));
 				offset += sizeof(uint64_t);
+				
 				std::memcpy(reinterpret_cast<void*>(&pos), reinterpret_cast<const void*>(reqData + offset), sizeof(uint64_t));
 				offset += sizeof(uint64_t);
+				
 				std::memcpy(reinterpret_cast<void*>(&packetLen), reinterpret_cast<const void*>(reqData + offset), sizeof(uint16_t));
 				offset += sizeof(uint16_t);
 			}
@@ -324,6 +342,8 @@ namespace UDPR
 		const uint16_t port;
 		const timeval timeout;
 
+		std::atomic<time_t> respTime;
+
 	private:
 		// The stream that will be sent.
 		std::unique_ptr<TStream> stream;
@@ -372,5 +392,17 @@ namespace UDPR
 		FORCEINLINE uint16_t GetPacketSize() const { return packetSz; }
 
 		FORCEINLINE timeval GetTimeout() const { return timeout; }
+
+		FORCEINLINE double LastCueTime() const
+		{
+			time_t then = respTime;
+			time_t now = time(nullptr);
+			if (then == 0)
+			{
+				return -1.0;
+			}
+
+			return difftime(now, then);
+		}
 	};
 }
